@@ -1,10 +1,43 @@
 # NoxMem
 
 A terminal UI for live Go heap profiling. Connect it to your application's pprof endpoint and see the memory runtime state
-that is otherwise scattered across profiling data — heap and stack usage, allocation samples with full traces, GC activity,
-and memory pressure. Explore how your application uses memory as it happens. Supports: **Windows**, **macOS**, and **Linux**.
+that is otherwise scattered across profiling data. You'll be able to inspect heap and stack usage, allocation samples with
+full traces, GC activity, and memory pressure. Supports: **Windows**, **macOS**, and **Linux**.
 
 ![full-preview!](/img/preview.png "full preview")
+
+## 📦 Installation
+
+<details>
+<summary>Install Go package (Go 1.26)</summary>
+
+```bash
+go install github.com/crumbyte/noxmem@latest
+```
+</details>
+
+<details>
+<summary>Build from source (Go 1.26)</summary>
+
+```bash
+git clone https://github.com/crumbyte/noxmem.git
+cd noxdir
+make build
+
+./bin/noxdir
+```
+</details>
+
+## 🛠 Usage
+
+Just run in the terminal:
+
+```bash
+noxdir
+```
+
+The interactive interface initializes immediately without configuration
+requirements.
 
 ## Usage
 
