@@ -21,23 +21,12 @@ go install github.com/crumbyte/noxmem@latest
 
 ```bash
 git clone https://github.com/crumbyte/noxmem.git
-cd noxdir
+cd noxmem
 make build
 
-./bin/noxdir
+./bin/noxmem
 ```
 </details>
-
-## 🛠 Usage
-
-Just run in the terminal:
-
-```bash
-noxdir
-```
-
-The interactive interface initializes immediately without configuration
-requirements.
 
 ## Usage
 
