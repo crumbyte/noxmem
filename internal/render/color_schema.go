@@ -9,7 +9,8 @@ import (
 type StatusBarColors struct {
 	Text      string `json:"text"`
 	BlockText string `json:"blockText"`
-	BG        string `json:"background"`
+	TextBG    string `json:"background"`
+	BlockBG   string `json:"blockBg"`
 	VersionBG string `json:"versionBackground"`
 }
 
@@ -82,9 +83,10 @@ func DecodeColorSchema(path string, cs *ColorSchema) error {
 func DefaultColorSchema() ColorSchema {
 	return ColorSchema{
 		StatusBar: StatusBarColors{
-			VersionBG: "#8338EC",
+			VersionBG: "#472D30",
 			Text:      "#C1C6B2",
-			BG:        "#353533",
+			TextBG:    "#353533",
+			BlockBG:   "#E07A5F",
 			BlockText: "#FFFDF5",
 		},
 		SizeUnit: SizeUnitColors{
@@ -97,8 +99,7 @@ func DefaultColorSchema() ColorSchema {
 			EB: "#6a040f",
 		},
 		Samples: Samples{
-			Line:         "#FFBE0B",
-			FileName:     "#FFBE0B",
+			FileName:     "#FFBE0B", //nolint:goconst
 			FunctionName: "#FFBE0B",
 		},
 		CellText:          "#F4F1DE",

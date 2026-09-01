@@ -9,16 +9,17 @@ import (
 	"strings"
 	"time"
 
-	"charm.land/bubbles/v2/help"
-	"charm.land/bubbles/v2/key"
-	"charm.land/bubbles/v2/progress"
-	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
 	"github.com/crumbyte/noxmem/internal/render/chart"
 	"github.com/crumbyte/noxmem/internal/render/samples"
 	"github.com/crumbyte/noxmem/internal/render/table"
 	"github.com/crumbyte/noxmem/pkg/explore"
 	"github.com/crumbyte/noxmem/pkg/pprofx"
+
+	"charm.land/bubbles/v2/help"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/progress"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 type TickMsg struct{}
@@ -578,15 +579,16 @@ func (vm *ViewModel) renderStatusBar() string {
 	}
 
 	vm.statusBar.Clear()
+	sbStyle := style.CS().StatusBar
 
 	barItems := []*BarItem{
-		{Content: "0.0.1", BGColor: "#472D30"},
-		{Content: "TARGET", BGColor: "#E07A5F"},
-		{Content: vm.host, BGColor: "#353533", Width: -1},
-		{Content: "RATE", BGColor: "#FF8C61"},
-		{Content: vm.refreshRate.String(), BGColor: "#353533"},
-		{Content: "SESSION", BGColor: "#FF8C61"},
-		{Content: fmtDuration(time.Since(vm.sessionStartTime)), BGColor: "#353533"},
+		{Content: "0.0.1", BGColor: sbStyle.VersionBG},
+		{Content: "TARGET", BGColor: sbStyle.BlockBG},
+		{Content: vm.host, BGColor: sbStyle.TextBG, Width: -1},
+		{Content: "RATE", BGColor: sbStyle.BlockBG},
+		{Content: vm.refreshRate.String(), BGColor: sbStyle.TextBG},
+		{Content: "SESSION", BGColor: sbStyle.BlockBG},
+		{Content: fmtDuration(time.Since(vm.sessionStartTime)), BGColor: sbStyle.TextBG},
 	}
 
 	vm.statusBar.Add(barItems)

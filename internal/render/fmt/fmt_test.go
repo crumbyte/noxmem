@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/crumbyte/noxmem/internal/render/fmt"
+
 	"github.com/stretchr/testify/require"
 )
 
