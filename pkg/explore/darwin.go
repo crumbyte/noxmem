@@ -3,6 +3,7 @@
 package explore
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 )
