@@ -25,7 +25,7 @@ var (
 		Long: `
 A terminal UI for live Go heap profiling. Connect it to your application's pprof 
 endpoint and see the memory runtime state that is otherwise scattered across 
-profiling data — heap and stack usage, allocation samples with full traces, GC activity,
+profiling data — heap and stack usage, allocation samples with full traces, GC activity, 
 and memory pressure.
 
 🔗 Learn more: https://github.com/crumbyte/noxmem`,

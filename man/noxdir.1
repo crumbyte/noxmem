@@ -1,0 +1,44 @@
+.TH NOXMEM 1 "September 2026" "noxmem 0.0.1" "User Commands"
+
+.SH NAME
+NoxMem \- a terminal UI for live GoLang heap memory profiling.
+
+.SH SYNOPSIS
+.B noxmem
+[\fB-t\fR|\fB--target\fR \fISTRINGS\fR]
+[\fB-r\fR|\fB--rate\fR \fIREFRESH_RATE\fR]
+[\fB-h\fR|\fB--help\fR]
+
+.SH DESCRIPTION
+.B NoxMem
+A terminal UI for live Go heap profiling. Connect it to your application's pprof endpoint and see the memory runtime state that is otherwise scattered across profiling data — heap and stack usage, allocation samples with full traces, GC activity, and memory pressure.
+.SH OPTIONS
+.TP
+.BR -t ", " --target " " \fISTRINGS\fR
+Target is a mandatory parameter which specifies the application's pprof endpoint. The pprof server must be up and running for noxmem to fetch heap/stack stats.
+
+Example: \fB--target="http://localhost:6060"\fR
+
+.TP
+.BR -r ", " --rate
+Rate specifies the refresh rate in seconds at which noxmem will fetch the target application memory stats. For example, setting this value to 5 will result in noxmem fetching the pprof server stats every 5 seconds. Min allowed value is 1 second.
+
+Default: 2
+Example: \fB--rate=5\fR
+
+.TP
+.BR -h ", " --help
+Show help and usage information.
+
+.SH EXAMPLES
+
+.TP
+Start application's profiling with default refresh rate (2s):
+.B noxmem -t "http://localhost:6060"
+
+.TP
+Start application's profiling with a custom refresh rate of 5s:
+.B noxmem -t "http://localhost:6060" -r 5
+
+.SH AUTHOR
+crumbyte (https://github.com/crumbyte)
