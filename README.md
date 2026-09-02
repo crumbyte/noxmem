@@ -58,17 +58,17 @@ A value that spikes and recovers each refresh will show a large first percentage
 
 ### Help (Memory terms)
 
-| Stat                   | Explanation                                                                                                                                                                                                                   |
-|------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **OS Memory Obtained** | The total memory the Go runtime has requested from the operating system for heap use. This is the ceiling. The runtime doesn't always use all of it immediately.                                                              |
-| **Allocated**          | A number of bytes occupied by live objects. It drops after GC runs and dead objects are collected.                                                                                                                            |
-| **Memory In-use**      | A number of bytes in spans that are currently active. A span is a chunk of memory the runtime manages internally. A span can be partially empty, but the span itself not yet returned to the idle pool. Always `≥ Allocated`. |
-| **Idle**               | Spans that are no longer in use and are sitting in a pool waiting to be reused or returned to the OS.                                                                                                                         |
-| **Released**           | The portion of idle memory that has already been returned to the OS.                                                                                                                                                          |
-| **Fragmentation**      | The gap between `Allocated` and `In-use`. It shows the amount of memory the runtime holds in active spans but no live object is using.                                                                                        |
-| **Next GC Goal **      | Shows the heap size required for triggering the next GC cycle.                                                                                                                                                                |
-| **GC Pause**           | A stop-the-world event where the entire program freezes briefly while the GC does bookkeeping. Frequent long pauses are a sign of memory pressure.                                                                            |
-| **Allocation Rate**    | How fast a particular code site is allocating memory per refresh interval. A site with high inuse but zero rate is stable retained memory. A site with high rate is actively driving GC pressure right now.                   |
+| Stat                      | Explanation                                                                                                                                                                                                                   |
+|---------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **OS Memory Obtained**    | The total memory the Go runtime has requested from the operating system for heap use. This is the ceiling. The runtime doesn't always use all of it immediately.                                                              |
+| **Allocated**             | A number of bytes occupied by live objects. It drops after GC runs and dead objects are collected.                                                                                                                            |
+| **Memory In-use**         | A number of bytes in spans that are currently active. A span is a chunk of memory the runtime manages internally. A span can be partially empty, but the span itself not yet returned to the idle pool. Always `≥ Allocated`. |
+| **Idle**                  | Spans that are no longer in use and are sitting in a pool waiting to be reused or returned to the OS.                                                                                                                         |
+| **Released**              | The portion of idle memory that has already been returned to the OS.                                                                                                                                                          |
+| **Fragmentation**         | The gap between `Allocated` and `In-use`. It shows the amount of memory the runtime holds in active spans but no live object is using.                                                                                        |
+| **Next GC Goal**          | Shows the heap size required for triggering the next GC cycle.                                                                                                                                                                |
+| **GC Pause**              | A stop-the-world event where the entire program freezes briefly while the GC does bookkeeping. Frequent long pauses are a sign of memory pressure.                                                                            |
+| **Allocation Rate**       | How fast a particular code site is allocating memory per refresh interval. A site with high inuse but zero rate is stable retained memory. A site with high rate is actively driving GC pressure right now.                   |
 
 The relationship between these values is always:
 
