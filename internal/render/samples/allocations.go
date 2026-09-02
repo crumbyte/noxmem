@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/crumbyte/noxmem/internal/render/fmt"
+	"github.com/crumbyte/noxmem/internal/render/format"
 	"github.com/crumbyte/noxmem/internal/render/table"
 	"github.com/crumbyte/noxmem/pkg/pprofx"
 
@@ -200,14 +200,14 @@ func (a *Allocations) renderAllocSamples() tea.View {
 		row := table.Row{
 			Cols: []string{
 				loc.SampleID.String(),
-				fmt.BytesSizeColor(loc.InUse, 10, a.styles.BytesStyleResolver),
-				fmt.BytesSizeColor(loc.Alloc, 10, a.styles.BytesStyleResolver),
-				fmt.BytesSizeColor(allocRate, 10, a.styles.BytesStyleResolver),
+				format.BytesSizeColor(loc.InUse, 10, a.styles.BytesStyleResolver),
+				format.BytesSizeColor(loc.Alloc, 10, a.styles.BytesStyleResolver),
+				format.BytesSizeColor(allocRate, 10, a.styles.BytesStyleResolver),
 				faint.Render(strconv.Itoa(loc.TotalSamples)),
 				faint.Render(strconv.Itoa(loc.InUseObjects)),
 				allocLine,
 				FunctionNameSuffix(
-					fmt.PrefixWrapString(
+					format.PrefixWrapString(
 						locationLine.Function.Name,
 						'/',
 						columns[len(columns)-2].Width-3,
@@ -215,7 +215,7 @@ func (a *Allocations) renderAllocSamples() tea.View {
 					a.styles.FunctionName,
 				),
 				FilepathSuffix(
-					fmt.PrefixWrapString(
+					format.PrefixWrapString(
 						locationLine.Function.Filename,
 						'/',
 						columns[len(columns)-1].Width-3,

@@ -1,8 +1,9 @@
-package fmt
+package format
 
 import (
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 
 	"charm.land/lipgloss/v2"
@@ -54,7 +55,7 @@ func BytesSizeColor[T numeric](bytesSize T, width int, suffixStyle SizeSuffixSty
 	)
 }
 
-func BytesSize[T numeric](bytesSize T) (string, string) {
+func BytesSizeApprox[T numeric](bytesSize T) (string, string) {
 	size := float64(bytesSize)
 	val := size
 
@@ -64,7 +65,7 @@ func BytesSize[T numeric](bytesSize T) (string, string) {
 		e := math.Floor(math.Log(size) / math.Log(1024))
 		suffix = sizeUnits[min(int(e), len(sizeUnits)-1)]
 
-		val = math.Floor(size/math.Pow(1024, e)*10+0.5) / 10
+		val = math.Round(size/math.Pow(1024, e)*10+0.5) / 10
 
 		if int(e) > len(sizeUnits)-1 {
 			val = 1024 * float64(int(e)-(len(sizeUnits)-1))
@@ -72,6 +73,20 @@ func BytesSize[T numeric](bytesSize T) (string, string) {
 	}
 
 	return fmt.Sprintf("%.2f", val), suffix
+}
+
+func BytesSize[T numeric](bytesSize T) (string, string) {
+	if bytesSize <= 0 {
+		return "0.00", sizeUnits[0]
+	}
+
+	size := float64(bytesSize)
+	e := math.Floor(math.Log(size) / math.Log(1024))
+
+	suffix := sizeUnits[min(int(e), len(sizeUnits)-1)]
+	size /= math.Pow(1024, e)
+
+	return strconv.FormatFloat(size, 'f', 2, 64), suffix
 }
 
 // WrapString wraps the string up to the provided limit value. If the string

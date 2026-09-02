@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/crumbyte/noxmem/internal/render/chart"
+	"github.com/crumbyte/noxmem/internal/render/format"
 	"github.com/crumbyte/noxmem/internal/render/samples"
 	"github.com/crumbyte/noxmem/internal/render/table"
 	"github.com/crumbyte/noxmem/pkg/explore"
@@ -25,10 +26,11 @@ import (
 type TickMsg struct{}
 
 const (
-	defaultRefreshRate   = time.Second
-	stackBlockWidthRatio = 0.3
+	defaultRefreshRate = time.Second
+	defaultChartPoints = 20
 
-	progressBarPadding = 2
+	stackBlockWidthRatio = 0.3
+	progressBarPadding   = 2
 )
 
 type ViewModel struct {
@@ -66,19 +68,6 @@ func WithRefreshRate(d time.Duration) Option {
 func NewViewModel(host string, client *pprofx.PProfClient, opts ...Option) (*ViewModel, error) {
 	var err error
 
-	scatterChart := chart.NewScatter(
-		chart.WithPointChar('◍'),
-		chart.WithYUnits("ms"),
-		chart.WithYLabelFormatter(func(value float64, units string) string {
-			return strconv.FormatFloat(value/1_000_000, 'f', 2, 64) + units
-		}),
-		chart.WithXLabelFormatter(func(value float64, _ string) string {
-			sincePauseEnd := time.Since(time.Unix(0, int64(value)))
-
-			return sincePauseEnd.Round(time.Second).String()
-		}),
-	)
-
 	vm := &ViewModel{
 		host:             host,
 		refreshRate:      defaultRefreshRate,
@@ -86,13 +75,14 @@ func NewViewModel(host string, client *pprofx.PProfClient, opts ...Option) (*Vie
 		sessionStartTime: time.Now(),
 		statusBar:        NewStatusBar(),
 		traceTable:       samples.NewTraceTable(buildTable()),
-		scatterChart:     scatterChart,
+		scatterChart:     buildChart(),
 		help:             help.New(),
 	}
 
+	// fetch the initial memory stats for heap, stack, and GC.
 	vm.initMemStats, err = client.MemStats(context.Background())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("render: could not get MemStats: %w", err)
 	}
 
 	for _, opt := range opts {
@@ -108,10 +98,12 @@ func NewViewModel(host string, client *pprofx.PProfClient, opts ...Option) (*Vie
 		},
 	)
 
-	vm.traceTable.SetStyles(samples.TraceStyles{
-		FileName:     *style.SamplesFileSuffixStyle(),
-		FunctionName: *style.SamplesFileSuffixStyle(),
-	})
+	vm.traceTable.SetStyles(
+		samples.TraceStyles{
+			FileName:     *style.SamplesFileSuffixStyle(),
+			FunctionName: *style.SamplesFileSuffixStyle(),
+		},
+	)
 
 	if err = vm.updateSamples(context.Background()); err != nil {
 		return nil, err
@@ -349,13 +341,13 @@ func (vm *ViewModel) renderHeapStats() string {
 		),
 	)
 
-	inUseAvailablePGTitle := "In-Use (" + fmtMemBytes(stats.HeapInuse) +
+	inUseAvailablePGTitle := "In-Use (" + format.BytesSizeWidth(stats.HeapInuse, 0) +
 		") | Available (" +
-		fmtMemBytes(stats.HeapSys) + "):\n"
+		format.BytesSizeWidth(stats.HeapSys, 0) + "):\n"
 
-	allocInUsePGTitle := "Allocated (" + fmtMemBytes(stats.Alloc) +
+	allocInUsePGTitle := "Allocated (" + format.BytesSizeWidth(stats.Alloc, 0) +
 		") | In-Use (" +
-		fmtMemBytes(stats.HeapInuse) + "):\n"
+		format.BytesSizeWidth(stats.HeapInuse, 0) + "):\n"
 
 	inUseAvailablePG := lipgloss.JoinVertical(
 		lipgloss.Left,
@@ -431,7 +423,7 @@ func (vm *ViewModel) renderGCStats(width int) string {
 	return renderInlineBlocks(
 		width,
 		renderStat(
-			"Next GC Goal:", fmtMemBytes(stats.NextGC),
+			"Next GC Goal:", format.BytesSizeWidth(stats.NextGC, 0),
 		),
 		renderStat(
 			"Last GC Ago:",
@@ -475,6 +467,9 @@ func renderInlineBlocks(availableWidth int, content ...string) string {
 	return lipgloss.JoinHorizontal(lipgloss.Top, result...)
 }
 
+// updateSamples updates the memory stats, including heap, stack, GC and samples.
+// It also calculates and applies the delta for runtime.MemStats. All components
+// that rely on stats data will be triggered for an update.
 func (vm *ViewModel) updateSamples(ctx context.Context) error {
 	memStatsDelta, err := vm.pprofClient.MemStatsDelta(ctx, &vm.memStatsDelta)
 	if err != nil {
@@ -495,12 +490,15 @@ func (vm *ViewModel) updateSamples(ctx context.Context) error {
 	return nil
 }
 
+// updateChart updates the GC pause scatter chart according to the last fetched
+// runtime.MemStats instance. It extracts the pause data and converts it into
+// a chart's data set.
 func (vm *ViewModel) updateChart() {
-	maxPoints := 20
+	if vm.scatterChart == nil {
+		return
+	}
 
-	gcPauseMap := pprofx.GCPauses(vm.memStatsDelta.Current(), maxPoints)
-
-	points := make([]chart.Point, 0, maxPoints)
+	gcPauseMap := pprofx.GCPauses(vm.memStatsDelta.Current(), defaultChartPoints)
 
 	var (
 		maxPauseNS  uint64
@@ -508,6 +506,9 @@ func (vm *ViewModel) updateChart() {
 		minPauseEnd = uint64(math.MaxUint64)
 	)
 
+	points := make([]chart.Point, 0, defaultChartPoints)
+
+	// set new points and calculate the min/max values on the X and Y axes.
 	for _, gcPause := range gcPauseMap {
 		maxPauseNS = max(gcPause.Duration, maxPauseNS)
 		maxPauseEnd = max(gcPause.EndTime, maxPauseEnd)
@@ -531,16 +532,12 @@ func (vm *ViewModel) updateChart() {
 }
 
 func (vm *ViewModel) fmtMemValue(init, prev, current uint64) string {
-	return fmtMemBytes(current) + vm.fmtDelta(init, prev, current)
+	return format.BytesSizeWidth(current, 0) + vm.fmtDelta(init, prev, current)
 }
 
 func (vm *ViewModel) fmtDelta(init, prev, current uint64) string {
 	return " (" + fmtMemDelta(vm.memStatsDelta.DiffPercent(prev, current)) +
 		" | " + fmtMemDelta(vm.memStatsDelta.DiffPercent(init, current)) + ")"
-}
-
-func fmtMemBytes[T int | int64 | uint64](value T) string {
-	return strconv.FormatFloat(float64(value)/1024/1024, 'f', 2, 64) + " MB"
 }
 
 func fmtMemDelta(value float64) string {
@@ -594,6 +591,30 @@ func (vm *ViewModel) renderStatusBar() string {
 	vm.statusBar.Add(barItems)
 
 	return style.StatusBarStyle().Render(vm.statusBar.Render(vm.width))
+}
+
+// buildChart creates a new scatter chart instance to display the GC pause graph,
+// where the Y-axis represents GC pause duration and the X-axis represents the
+// time since the last pause.
+func buildChart() *chart.Scatter {
+	// converts GC pause nanoseconds into ms string representation.
+	yLabelFormatter := func(value float64, units string) string {
+		return strconv.FormatFloat(value/1_000_000, 'f', 2, 64) + units
+	}
+
+	// converts last GC pause nanoseconds into time since.
+	xLabelFormatter := func(value float64, _ string) string {
+		sincePauseEnd := time.Since(time.Unix(0, int64(value)))
+
+		return sincePauseEnd.Round(time.Second).String()
+	}
+
+	return chart.NewScatter(
+		chart.WithPointChar('◍'),
+		chart.WithYUnits("ms"),
+		chart.WithYLabelFormatter(yLabelFormatter),
+		chart.WithXLabelFormatter(xLabelFormatter),
+	)
 }
 
 func buildTable() table.Model {

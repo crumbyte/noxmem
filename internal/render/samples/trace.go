@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/crumbyte/noxmem/internal/render/fmt"
+	"github.com/crumbyte/noxmem/internal/render/format"
 	"github.com/crumbyte/noxmem/internal/render/table"
 	"github.com/crumbyte/noxmem/pkg/pprofx"
 
@@ -137,13 +137,13 @@ func (tt *TraceTable) renderSampleData() tea.View {
 				location.Line[0].Function.Filename,
 				strconv.Itoa(int(location.Line[0].Line)),
 				FunctionNameSuffix(
-					fmt.PrefixWrapString(
+					format.PrefixWrapString(
 						location.Line[0].Function.Name, '/', columns[2].Width-3,
 					),
 					tt.styles.FunctionName,
 				),
 				FilepathSuffix(
-					fmt.PrefixWrapString(
+					format.PrefixWrapString(
 						location.Line[0].Function.Filename, '/', columns[3].Width-3,
 					),
 					tt.styles.FileName,
