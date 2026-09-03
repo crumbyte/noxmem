@@ -101,17 +101,19 @@ Usage:
 
 Flags:
   -h, --help            help for noxmem
-  -r, --rate int        
-                        Rate specifies the refresh rate in seconds at which noxmem will fetch the target
+
+  -r, --rate int        Rate specifies the refresh rate in seconds at which noxmem will fetch the target
                         application memory stats. For example, setting this value to 5 will result in 
                         noxmem fetching the pprof server stats every 5 seconds. Min allowed value is 1 second.
                         
                         Example: --rate=5 (default 2)
-  -t, --target string   
-                        Target is a mandatory parameter which specifies the application's pprof endpoint.
+
+  -t, --target string   Target is a mandatory parameter which specifies the application's pprof endpoint.
                         The pprof server must be up and running for noxmem to fetch heap/stack stats.
                         
                         Example: --target="http://localhost:6060"
+
+  -v, --version         Print the application version and exit.
 ```
 
 ## Note

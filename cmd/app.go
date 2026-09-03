@@ -23,7 +23,7 @@ var (
 
 	appCmd = &cobra.Command{
 		Use:   "noxmem",
-		Short: "Displays the stack and heap memory allocation status of the target application.",
+		Short: "Terminal utility for live GoLang heap memory profiling.",
 		Long: `
 A terminal UI for live Go heap profiling. Connect it to your application's pprof 
 endpoint and see the memory runtime state that is otherwise scattered across 
