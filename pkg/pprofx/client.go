@@ -21,17 +21,17 @@ const HeapProfilePath = "/debug/pprof/heap"
 
 type MemStatDelta *Delta[runtime.MemStats, uint64]
 
-type PProfClient struct {
+type Client struct {
 	baseURL string
 	client  *http.Client
 }
 
-func NewPProfClient(baseURL string, c *http.Client) (*PProfClient, error) {
+func NewPProfClient(baseURL string, c *http.Client) (*Client, error) {
 	if c == nil {
 		c = defaultHTTPClient()
 	}
 
-	pprofClient := &PProfClient{
+	pprofClient := &Client{
 		client:  c,
 		baseURL: strings.TrimSuffix(baseURL, "/"),
 	}
@@ -45,7 +45,7 @@ func NewPProfClient(baseURL string, c *http.Client) (*PProfClient, error) {
 	return pprofClient, nil
 }
 
-func (c *PProfClient) Probe(ctx context.Context) error {
+func (c *Client) Probe(ctx context.Context) error {
 	request, err := http.NewRequestWithContext(
 		ctx, http.MethodGet, c.baseURL+HeapProfilePath, nil,
 	)
@@ -69,7 +69,7 @@ func (c *PProfClient) Probe(ctx context.Context) error {
 	return nil
 }
 
-func (c *PProfClient) HeapProfile(ctx context.Context) (Profile, error) {
+func (c *Client) HeapProfile(ctx context.Context) (Profile, error) {
 	var pfl Profile
 
 	req, err := http.NewRequestWithContext(
@@ -98,7 +98,7 @@ func (c *PProfClient) HeapProfile(ctx context.Context) (Profile, error) {
 	return pfl, nil
 }
 
-func (c *PProfClient) MemStats(ctx context.Context) (runtime.MemStats, error) {
+func (c *Client) MemStats(ctx context.Context) (runtime.MemStats, error) {
 	req, err := http.NewRequestWithContext(
 		ctx, http.MethodGet, c.baseURL+HeapProfilePath+"?debug=1", nil,
 	)
@@ -120,7 +120,7 @@ func (c *PProfClient) MemStats(ctx context.Context) (runtime.MemStats, error) {
 	return c.parseMemStats(res.Body)
 }
 
-func (c *PProfClient) MemStatsDelta(ctx context.Context, md MemStatDelta) (MemStatDelta, error) {
+func (c *Client) MemStatsDelta(ctx context.Context, md MemStatDelta) (MemStatDelta, error) {
 	stats, err := c.MemStats(ctx)
 	if err != nil {
 		return nil, err
@@ -135,7 +135,7 @@ func (c *PProfClient) MemStatsDelta(ctx context.Context, md MemStatDelta) (MemSt
 	return md, nil
 }
 
-func (c *PProfClient) parseMemStats(r io.Reader) (runtime.MemStats, error) {
+func (c *Client) parseMemStats(r io.Reader) (runtime.MemStats, error) {
 	var (
 		stats         runtime.MemStats
 		foundMemStats bool

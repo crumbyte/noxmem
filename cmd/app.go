@@ -17,7 +17,9 @@ var (
 	ErrUnknown = errors.New("unknown error")
 
 	target      string
+	appVersion  string
 	refreshRate int
+	showVersion bool
 
 	appCmd = &cobra.Command{
 		Use:   "noxmem",
@@ -34,14 +36,15 @@ and memory pressure.
 )
 
 func init() {
+	appCmd.SetVersionTemplate("{{.Version}}\n")
+
 	appCmd.PersistentFlags().
 		StringVarP(
 			&target,
 			"target",
 			"t",
 			"",
-			`
-Target is a mandatory parameter which specifies the application's pprof endpoint.
+			`Target is a mandatory parameter which specifies the application's pprof endpoint.
 The pprof server must be up and running for noxmem to fetch heap/stack stats.
 
 Example: --target="http://localhost:6060"`,
@@ -53,18 +56,29 @@ Example: --target="http://localhost:6060"`,
 			"rate",
 			"r",
 			2,
-			`
-Rate specifies the refresh rate in seconds at which noxmem will fetch the target
+			`Rate specifies the refresh rate in seconds at which noxmem will fetch the target
 application memory stats. For example, setting this value to 5 will result in 
 noxmem fetching the pprof server stats every 5 seconds. Min allowed value is 1 second.
 
 Example: --rate=5`,
 		)
 
+	appCmd.PersistentFlags().
+		BoolVarP(
+			&showVersion,
+			"version",
+			"v",
+			false,
+			`Print the application version and exit.`,
+		)
+
 	_ = appCmd.MarkPersistentFlagRequired("target")
 }
 
-func Execute() {
+func Execute(version string) {
+	appVersion = version
+	appCmd.Version = version
+
 	if err := appCmd.Execute(); err != nil {
 		if cliErr, ok := errors.AsType[*CLIError](err); ok {
 			printError(cliErr.Error())
@@ -87,6 +101,7 @@ func run(_ *cobra.Command, _ []string) error {
 	vm, err := render.NewViewModel(
 		target,
 		client,
+		render.WithVersion(appVersion),
 		render.WithRefreshRate(
 			time.Second*time.Duration(max(1, refreshRate)),
 		),

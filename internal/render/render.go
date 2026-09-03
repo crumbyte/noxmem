@@ -40,7 +40,7 @@ type ViewModel struct {
 	sessionStartTime time.Time
 	refreshRate      time.Duration
 
-	pprofClient      *pprofx.PProfClient
+	pprofClient      *pprofx.Client
 	initMemStats     runtime.MemStats
 	memStatsDelta    pprofx.Delta[runtime.MemStats, uint64]
 	samplesLocations pprofx.Locations
@@ -54,7 +54,8 @@ type ViewModel struct {
 
 	help help.Model
 
-	host string
+	host       string
+	appVersion string
 }
 
 type Option func(*ViewModel)
@@ -65,13 +66,19 @@ func WithRefreshRate(d time.Duration) Option {
 	}
 }
 
-func NewViewModel(host string, client *pprofx.PProfClient, opts ...Option) (*ViewModel, error) {
+func WithVersion(appVersion string) Option {
+	return func(v *ViewModel) {
+		v.appVersion = appVersion
+	}
+}
+
+func NewViewModel(host string, c *pprofx.Client, opts ...Option) (*ViewModel, error) {
 	var err error
 
 	vm := &ViewModel{
 		host:             host,
 		refreshRate:      defaultRefreshRate,
-		pprofClient:      client,
+		pprofClient:      c,
 		sessionStartTime: time.Now(),
 		statusBar:        NewStatusBar(),
 		traceTable:       samples.NewTraceTable(buildTable()),
@@ -80,7 +87,7 @@ func NewViewModel(host string, client *pprofx.PProfClient, opts ...Option) (*Vie
 	}
 
 	// fetch the initial memory stats for heap, stack, and GC.
-	vm.initMemStats, err = client.MemStats(context.Background())
+	vm.initMemStats, err = c.MemStats(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("render: could not get MemStats: %w", err)
 	}
@@ -216,7 +223,9 @@ func (vm *ViewModel) View() tea.View {
 	keyBindings := vm.help.ShortHelpView(Bindings.ListBindings())
 
 	return tea.View{
-		AltScreen: true,
+		WindowTitle: "NoxMem " + vm.appVersion,
+		MouseMode:   tea.MouseModeNone,
+		AltScreen:   true,
 		Content: lipgloss.NewStyle().
 			Height(vm.height).
 			Render(
@@ -579,13 +588,16 @@ func (vm *ViewModel) renderStatusBar() string {
 	sbStyle := style.CS().StatusBar
 
 	barItems := []*BarItem{
-		{Content: "0.0.1", BGColor: sbStyle.VersionBG},
+		{Content: vm.appVersion, BGColor: sbStyle.VersionBG},
 		{Content: "TARGET", BGColor: sbStyle.BlockBG},
 		{Content: vm.host, BGColor: sbStyle.TextBG, Width: -1},
 		{Content: "RATE", BGColor: sbStyle.BlockBG},
 		{Content: vm.refreshRate.String(), BGColor: sbStyle.TextBG},
 		{Content: "SESSION", BGColor: sbStyle.BlockBG},
-		{Content: fmtDuration(time.Since(vm.sessionStartTime)), BGColor: sbStyle.TextBG},
+		{
+			Content: fmtDuration(time.Since(vm.sessionStartTime)),
+			BGColor: sbStyle.TextBG,
+		},
 	}
 
 	vm.statusBar.Add(barItems)

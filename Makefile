@@ -1,5 +1,6 @@
 .PHONY: help lint test tidy clear-cache
 
+VERSION=0.0.1
 BINARY_DIR=./bin
 BINARY_NAME=noxmem
 
@@ -17,7 +18,7 @@ tidy: ## Upgrade dependencies and format code
 	go fmt ./...
 
 build: ## Produce a binary
-	go build -ldflags "-s -w" -o ${BINARY_DIR}/${BINARY_NAME}
+	go build -ldflags "-s -w -X main.version=${VERSION}" -o ${BINARY_DIR}/${BINARY_NAME}
 
 clear-cache:
 	go clean -cache && go clean -testcache && go clean -fuzzcache && go clean -modcache
