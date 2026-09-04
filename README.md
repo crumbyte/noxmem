@@ -8,6 +8,63 @@ full traces, GC activity, and memory pressure. Supports: **Windows**, **macOS**,
 
 ## 📦 Installation
 
+
+<details>
+<summary>MacOS</summary>
+
+Stable release:
+```bash
+brew tap crumbyte/noxmem
+brew install --cask noxmem
+```
+
+Nightly release:
+```bash
+brew tap crumbyte/noxmem
+brew uninstall --cask noxmem # If the stable version was installed previously
+brew install --cask noxmem-nightly
+```
+</details>
+
+<details>
+<summary>Linux</summary>
+
+```bash
+curl -s https://crumbyte.github.io/noxmem/scripts/install.sh | bash
+```
+
+```bash
+curl -s https://crumbyte.github.io/noxmem/scripts/install.sh | bash -s -- v0.0.1
+```
+</details>
+
+<details>
+<summary>Windows</summary>
+
+Stable release:
+```bash
+scoop bucket add crumbyte https://github.com/crumbyte/scoop-bucket
+scoop install noxmem
+```
+
+Nightly release:
+```bash
+scoop bucket add crumbyte https://github.com/crumbyte/scoop-bucket
+scoop uninstall noxmem # If the stable version was installed previously
+scoop install noxmem-nightly
+```
+</details>
+
+<details>
+<summary>Pre-compiled binaries</summary>
+<br>
+
+Obtain the latest optimized binary from
+the [Releases](https://github.com/crumbyte/noxmem/releases) page. The
+application is self-contained and requires no installation process.
+
+</details>
+
 <details>
 <summary>Install Go package (Go 1.26)</summary>
 
