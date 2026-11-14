@@ -13,11 +13,12 @@ import (
 	"strings"
 	"time"
 	"unsafe"
-
-	"github.com/google/pprof/profile"
 )
 
-const HeapProfilePath = "/debug/pprof/heap"
+const (
+	HeapProfilePath      = "/debug/pprof/heap"
+	GoroutineProfilePath = "/debug/pprof/goroutine?debug=2"
+)
 
 type MemStatDelta *Delta[runtime.MemStats, uint64]
 
@@ -69,33 +70,49 @@ func (c *Client) Probe(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) HeapProfile(ctx context.Context) (Profile, error) {
-	var pfl Profile
-
-	req, err := http.NewRequestWithContext(
-		ctx, http.MethodGet, c.baseURL+HeapProfilePath, nil,
-	)
+func (c *Client) HeapProfile(ctx context.Context) (Locations, error) {
+	readCloser, err := c.profileRequest(ctx, HeapProfilePath)
 	if err != nil {
-		return pfl, fmt.Errorf("could not create request: %w", err)
-	}
-
-	res, err := c.client.Do(req)
-	if err != nil {
-		return pfl, fmt.Errorf("could not execute request: %w", err)
+		return nil, fmt.Errorf(
+			"pprofx: could not request memory profile: %w", err,
+		)
 	}
 
 	defer func(c io.Closer) {
 		_ = c.Close()
-	}(res.Body)
+	}(readCloser)
 
-	pfl.source, err = profile.Parse(res.Body)
+	locations, err := new(MemoryProfileParser{WithFreedSamples: true}).
+		Parse(readCloser)
 	if err != nil {
-		return pfl, fmt.Errorf(
-			"could not parse binary profile response: %w", err,
+		return nil, fmt.Errorf(
+			"pprofx: could not parse memory profile: %w", err,
 		)
 	}
 
-	return pfl, nil
+	return locations, nil
+}
+
+func (c *Client) GoroutineProfile(ctx context.Context) (Locations, error) {
+	readCloser, err := c.profileRequest(ctx, GoroutineProfilePath)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"pprofx: could not request goroutine profile: %w", err,
+		)
+	}
+
+	defer func(c io.Closer) {
+		_ = c.Close()
+	}(readCloser)
+
+	locations, err := new(GoroutineParser{}).Parse(readCloser)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"pprofx: could not parse goroutine profile: %w", err,
+		)
+	}
+
+	return locations, nil
 }
 
 func (c *Client) MemStats(ctx context.Context) (runtime.MemStats, error) {
@@ -133,6 +150,22 @@ func (c *Client) MemStatsDelta(ctx context.Context, md MemStatDelta) (MemStatDel
 	md.prev, md.current = md.current, stats
 
 	return md, nil
+}
+
+func (c *Client) profileRequest(ctx context.Context, path string) (io.ReadCloser, error) {
+	req, err := http.NewRequestWithContext(
+		ctx, http.MethodGet, c.baseURL+path, nil,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("could not create request: %w", err)
+	}
+
+	res, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("could not execute request: %w", err)
+	}
+
+	return res.Body, nil
 }
 
 func (c *Client) parseMemStats(r io.Reader) (runtime.MemStats, error) {

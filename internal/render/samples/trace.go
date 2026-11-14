@@ -35,7 +35,7 @@ func NewTraceTable(t table.Model) *TraceTable {
 	return &TraceTable{
 		dataTable: t,
 		columns: table.Columns{
-			{Title: "dwdw", Width: 0},
+			{Title: "", Width: 0},
 			{Title: "Line", WidthRatio: 0.07},
 			{Title: "Function Name", MinWidth: 30, WidthRatio: 0.295},
 			{Title: "Location", Full: true},
