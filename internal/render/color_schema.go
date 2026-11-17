@@ -12,6 +12,7 @@ type StatusBarColors struct {
 	TextBG    string `json:"background"`
 	BlockBG   string `json:"blockBg"`
 	VersionBG string `json:"versionBackground"`
+	ModeBG    string `json:"modeBackground"`
 }
 
 type SizeUnitColors struct {
@@ -25,9 +26,10 @@ type SizeUnitColors struct {
 }
 
 type Samples struct {
-	Line         string `json:"line"`
-	FileName     string `json:"fileName"`
-	FunctionName string `json:"functionName"`
+	Line           string `json:"line"`
+	FileName       string `json:"fileName"`
+	FunctionName   string `json:"functionName"`
+	GoroutineState string `json:"goroutineState"`
 }
 
 // The ColorSchema schema contains color values for most UI elements, such as
@@ -88,6 +90,7 @@ func DefaultColorSchema() ColorSchema {
 			TextBG:    "#353533",
 			BlockBG:   "#E07A5F",
 			BlockText: "#FFFDF5",
+			ModeBG:    "#F70063",
 		},
 		SizeUnit: SizeUnitColors{
 			B:  "#C4FFCE",
@@ -99,8 +102,9 @@ func DefaultColorSchema() ColorSchema {
 			EB: "#6a040f",
 		},
 		Samples: Samples{
-			FileName:     "#FFBE0B", //nolint:goconst
-			FunctionName: "#FFBE0B",
+			FileName:       "#FFBE0B", //nolint:goconst
+			FunctionName:   "#FFBE0B",
+			GoroutineState: "#C4FFCE",
 		},
 		CellText:          "#F4F1DE",
 		TableHeaderBorder: "240",

@@ -96,6 +96,8 @@ linters:
 
   # All settings can be found here https://github.com/golangci/golangci-lint/blob/HEAD/.golangci.reference.yml
   settings:
+    goconst:
+      min-occurrences: 4
     cyclop:
       max-complexity: 16
       # The maximal average package complexity.

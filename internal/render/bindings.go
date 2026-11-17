@@ -9,28 +9,39 @@ import (
 var Bindings KeyMap
 
 type KeyMap struct {
-	NavigationKeyMap table.KeyMap
-	NameFilter       key.Binding
-	SortKeys         key.Binding
-	Explore          key.Binding
-	SelectSample     key.Binding
-	QuitTrace        key.Binding
-	Quit             key.Binding
-	style            *Style
+	NavigationKeyMap  table.KeyMap
+	NameFilter        key.Binding
+	MemorySortKeys    key.Binding
+	GoroutineSortKeys key.Binding
+	Explore           key.Binding
+	SelectSample      key.Binding
+	QuitTrace         key.Binding
+	Quit              key.Binding
+	Mode              key.Binding
+	style             *Style
 }
 
-func (km *KeyMap) ListBindings() []key.Binding {
-	return []key.Binding{
+func (km *KeyMap) ListBindings(m Mode) []key.Binding {
+	bindings := []key.Binding{
 		km.NavigationKeyMap.LineUp,
 		km.NavigationKeyMap.LineDown,
 		km.NavigationKeyMap.GotoTop,
 		km.NavigationKeyMap.GotoBottom,
 		km.SelectSample,
 		km.QuitTrace,
-		km.SortKeys,
 		km.Explore,
 		km.Quit,
+		km.Mode,
 	}
+
+	switch m {
+	case Memory:
+		bindings = append(bindings, km.MemorySortKeys)
+	case Goroutine:
+		bindings = append(bindings, km.GoroutineSortKeys)
+	}
+
+	return bindings
 }
 
 //nolint:funlen
@@ -81,11 +92,18 @@ func DefaultKeyMap(s *Style) KeyMap {
 				s.Help().Render("unselect sample"),
 			),
 		),
-		SortKeys: key.NewBinding(
+		MemorySortKeys: key.NewBinding(
 			key.WithKeys("1", "2", "3"),
 			key.WithHelp(
 				s.BindKey().Render("1/2/3"),
-				s.Help().Render("sort inuse/total/objects"),
+				s.Help().Render("sort by: inuse/total/objects"),
+			),
+		),
+		GoroutineSortKeys: key.NewBinding(
+			key.WithKeys("1", "2"),
+			key.WithHelp(
+				s.BindKey().Render("1/2"),
+				s.Help().Render("sort by: ID/state"),
 			),
 		),
 		NameFilter: key.NewBinding(
@@ -107,6 +125,13 @@ func DefaultKeyMap(s *Style) KeyMap {
 			key.WithHelp(
 				s.BindKey().Render("q/ctrl+c"),
 				s.Help().Render("quit"),
+			),
+		),
+		Mode: key.NewBinding(
+			key.WithKeys("M", "G"),
+			key.WithHelp(
+				s.BindKey().Render("M/G"),
+				s.Help().Render("switch mode"),
 			),
 		),
 	}

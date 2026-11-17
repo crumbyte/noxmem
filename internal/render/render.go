@@ -23,6 +23,17 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
+type Mode string
+
+func (m Mode) String() string {
+	return string(m)
+}
+
+const (
+	Memory    Mode = "memory"
+	Goroutine Mode = "goroutine"
+)
+
 type TickMsg struct{}
 
 const (
@@ -32,6 +43,16 @@ const (
 	stackBlockWidthRatio = 0.3
 	progressBarPadding   = 2
 )
+
+type ActiveSamplesTable interface {
+	tea.Model
+
+	SetHeight(height int)
+	SetLocations(l pprofx.Locations)
+	SetSortKey(sortKey string)
+	CurrentSampleID() pprofx.SampleID
+	Cursor() int
+}
 
 type ViewModel struct {
 	width  int
@@ -46,8 +67,10 @@ type ViewModel struct {
 	samplesLocations pprofx.Locations
 	maxGCPause       uint64
 
-	allocationsTable *samples.Allocations
-	traceTable       *samples.TraceTable
+	goroutineSamplesTable *samples.GoroutineSamples
+	memorySamplesTable    *samples.MemorySamples
+	activeSamplesTable    ActiveSamplesTable
+	traceTable            *samples.TraceTable
 
 	scatterChart *chart.Scatter
 	statusBar    *StatusBar
@@ -56,6 +79,7 @@ type ViewModel struct {
 
 	host       string
 	appVersion string
+	mode       Mode
 }
 
 type Option func(*ViewModel)
@@ -84,6 +108,7 @@ func NewViewModel(host string, c *pprofx.Client, opts ...Option) (*ViewModel, er
 		traceTable:       samples.NewTraceTable(buildTable()),
 		scatterChart:     buildChart(),
 		help:             help.New(),
+		mode:             Memory,
 	}
 
 	// fetch the initial memory stats for heap, stack, and GC.
@@ -96,14 +121,20 @@ func NewViewModel(host string, c *pprofx.Client, opts ...Option) (*ViewModel, er
 		opt(vm)
 	}
 
-	vm.allocationsTable = samples.NewSamplesTable(buildTable(), vm.refreshRate)
-	vm.allocationsTable.SetStyles(
-		samples.AllocationsStyles{
-			FileName:           *style.SamplesFileSuffixStyle(),
-			FunctionName:       *style.SamplesFileSuffixStyle(),
-			BytesStyleResolver: style.SizeUnit,
-		},
-	)
+	sampleStyles := samples.SampleStyles{
+		FileName:           *style.SamplesFileSuffixStyle(),
+		FunctionName:       *style.SamplesFileSuffixStyle(),
+		BytesStyleResolver: style.SizeUnit,
+		GoroutineState:     *style.SamplesGoroutineStateStyle(),
+	}
+
+	vm.memorySamplesTable = samples.NewMemorySamples(buildTable(), vm.refreshRate)
+	vm.memorySamplesTable.SetStyles(sampleStyles)
+
+	vm.goroutineSamplesTable = samples.NewGoroutinesTable(buildTable())
+	vm.goroutineSamplesTable.SetStyles(sampleStyles)
+
+	vm.activeSamplesTable = vm.memorySamplesTable
 
 	vm.traceTable.SetStyles(
 		samples.TraceStyles{
@@ -116,7 +147,7 @@ func NewViewModel(host string, c *pprofx.Client, opts ...Option) (*ViewModel, er
 		return nil, err
 	}
 
-	vm.allocationsTable.SetLocations(vm.samplesLocations)
+	vm.activeSamplesTable.SetLocations(vm.samplesLocations)
 	vm.traceTable.SetLocations(vm.samplesLocations)
 
 	return vm, nil
@@ -144,28 +175,50 @@ func (vm *ViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, Bindings.Quit):
 			return vm, tea.Quit
 		case key.Matches(msg, Bindings.SelectSample):
-			vm.allocationsTable.Update(samples.BlurSamples{})
+			vm.activeSamplesTable.Update(samples.BlurSamples{})
 			vm.traceTable.Update(samples.FocusSamples{})
 		case key.Matches(msg, Bindings.QuitTrace):
-			vm.allocationsTable.Update(samples.FocusSamples{})
+			vm.activeSamplesTable.Update(samples.FocusSamples{})
 			vm.traceTable.Update(samples.BlurSamples{})
-		case key.Matches(msg, Bindings.SortKeys):
-			vm.allocationsTable.SetSortKey(msg.String())
+		case key.Matches(msg, Bindings.MemorySortKeys, Bindings.GoroutineSortKeys):
+			vm.activeSamplesTable.SetSortKey(msg.String())
 		case key.Matches(msg, Bindings.Explore):
 			_ = explore.Explore(vm.traceTable.SelectedFilename())
+		case key.Matches(msg, Bindings.Mode):
+			switch {
+			case msg.String() == "M":
+				vm.mode = Memory
+
+				vm.activeSamplesTable = vm.memorySamplesTable
+			case msg.String() == "G":
+				vm.mode = Goroutine
+
+				vm.activeSamplesTable = vm.goroutineSamplesTable
+			}
+
+			if err := vm.updateSamples(ctx); err != nil {
+				panic(err)
+			}
+
+			vm.activeSamplesTable.Update(
+				tea.WindowSizeMsg{Width: vm.width, Height: vm.height},
+			)
+
+			vm.activeSamplesTable.SetLocations(vm.samplesLocations)
+			vm.traceTable.SetLocations(vm.samplesLocations)
 		}
 	case TickMsg:
 		if err := vm.updateSamples(ctx); err != nil {
 			panic(err)
 		}
 
-		vm.allocationsTable.SetLocations(vm.samplesLocations)
+		vm.activeSamplesTable.SetLocations(vm.samplesLocations)
 		vm.traceTable.SetLocations(vm.samplesLocations)
 
 		commands = append(commands, vm.tick())
 	}
 
-	_, samplesCmd := vm.allocationsTable.Update(msg)
+	_, samplesCmd := vm.activeSamplesTable.Update(msg)
 	_, sampleDataCmd := vm.traceTable.Update(msg)
 
 	commands = append(commands, samplesCmd, sampleDataCmd)
@@ -220,7 +273,7 @@ func (vm *ViewModel) View() tea.View {
 
 	selectedSampleBlock := vm.renderCurrentSample(availableHeight - 1)
 
-	keyBindings := vm.help.ShortHelpView(Bindings.ListBindings())
+	keyBindings := vm.help.ShortHelpView(Bindings.ListBindings(vm.mode))
 
 	return tea.View{
 		WindowTitle: "NoxMem " + vm.appVersion,
@@ -244,26 +297,36 @@ func (vm *ViewModel) View() tea.View {
 }
 
 func (vm *ViewModel) renderAllocSamples(height int) string {
-	vm.allocationsTable.SetHeight(height)
+	vm.activeSamplesTable.SetHeight(height)
 
-	title := "Allocation Samples [" +
-		strconv.Itoa(vm.allocationsTable.Cursor()+1) + "|" +
+	modeTitle := "Allocation Samples ["
+
+	if vm.mode == Goroutine {
+		modeTitle = "Goroutines Samples ["
+	}
+
+	title := modeTitle +
+		strconv.Itoa(vm.activeSamplesTable.Cursor()+1) + "|" +
 		strconv.Itoa(len(vm.samplesLocations)) + "]"
 
 	return renderInlineBlock(
 		title,
-		vm.allocationsTable.View().Content,
+		vm.activeSamplesTable.View().Content,
 		vm.width,
 	)
 }
 
 func (vm *ViewModel) renderCurrentSample(height int) string {
 	vm.traceTable.SetHeight(height)
-	vm.traceTable.SetSampleID(vm.allocationsTable.CurrentSampleID())
+	vm.traceTable.SetSampleID(vm.activeSamplesTable.CurrentSampleID())
+
+	if vm.activeSamplesTable.CurrentSampleID() == "" {
+		return ""
+	}
 
 	title := "Sample Trace [" +
 		strconv.Itoa(vm.traceTable.Cursor()+1) + "|" +
-		strconv.Itoa(len(vm.samplesLocations[vm.allocationsTable.CurrentSampleID()].Locations)) + "]"
+		strconv.Itoa(len(vm.samplesLocations[vm.activeSamplesTable.CurrentSampleID()].Locations)) + "]"
 
 	return renderInlineBlock(
 		title,
@@ -487,12 +550,16 @@ func (vm *ViewModel) updateSamples(ctx context.Context) error {
 
 	vm.memStatsDelta = *memStatsDelta
 
-	profile, err := vm.pprofClient.HeapProfile(ctx)
+	locationsFetcher := vm.pprofClient.HeapProfile
+
+	if vm.mode == Goroutine {
+		locationsFetcher = vm.pprofClient.GoroutineProfile
+	}
+
+	vm.samplesLocations, err = locationsFetcher(ctx)
 	if err != nil {
 		return fmt.Errorf("render: fetch heap profile: %w", err)
 	}
-
-	vm.samplesLocations = profile.Locations(true)
 
 	vm.updateChart()
 
@@ -570,9 +637,8 @@ func fmtMemDelta(value float64) string {
 func fmtDuration(d time.Duration) string {
 	seconds := int(d.Seconds())
 	minutes, seconds := seconds/60, seconds%60
-	hours, minutes := minutes/60, minutes%60
 
-	return fmt.Sprintf("%02dh:%02dm:%02ds", hours, minutes, seconds)
+	return fmt.Sprintf("%02dm:%02ds", minutes, seconds)
 }
 
 func fmtTimeSince(t time.Time, roundDuration time.Duration) string {
@@ -598,6 +664,8 @@ func (vm *ViewModel) renderStatusBar() string {
 			Content: fmtDuration(time.Since(vm.sessionStartTime)),
 			BGColor: sbStyle.TextBG,
 		},
+		{Content: "MODE", BGColor: sbStyle.ModeBG},
+		{Content: vm.mode.String(), BGColor: sbStyle.TextBG},
 	}
 
 	vm.statusBar.Add(barItems)

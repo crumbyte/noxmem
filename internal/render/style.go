@@ -274,6 +274,20 @@ func (s *Style) SamplesFileSuffixStyle() *lipgloss.Style {
 	return cv
 }
 
+func (s *Style) SamplesGoroutineStateStyle() *lipgloss.Style {
+	cv, ok := s.cache["samplesGoroutineState"]
+	if !ok {
+		cs := lipgloss.NewStyle().
+			Foreground(lipgloss.Color(s.cs.Samples.GoroutineState))
+
+		s.cache["samplesGoroutineState"] = &cs
+
+		return &cs
+	}
+
+	return cv
+}
+
 func (s *Style) Help() *lipgloss.Style {
 	cv, ok := s.cache["help"]
 	if !ok {
